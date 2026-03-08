@@ -160,13 +160,14 @@ jobs:
           CHAT_ID: ${{ secrets.CHAT_ID }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          COMMIT_URL: ${{ github.event.head_commit.url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TITLE: Manager
           BRANCH: ${{ github.ref_name }}
         run: |
           if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then
+            export PREV_COMMIT="$(git rev-parse HEAD^1 2>/dev/null || git rev-parse HEAD)"
+            export COMMIT_MESSAGE="$(git log -1 --pretty=format:%B "$PREV_COMMIT")"
+            export COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/$PREV_COMMIT"
             export VERSION=$(git rev-list --count HEAD)
             APK=$(find ./app/build/outputs/apk/release -name "*.apk")
             pip3 install telethon

@@ -163,6 +163,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 
 @SuppressLint("StringFormatInvalid", "LocalContextGetResourceValueCall")
 @Composable
@@ -450,7 +452,7 @@ fun ModulePagerMiuix(
         }
     }
 
-    fun onModuleAddShortcut(module: ModuleViewModel.ModuleInfo) {
+    fun onModuleAddShortcut(module: ModuleViewModel.ModuleInfo, type: ShortcutType? = null) {
         shortcutModuleId = module.id
         shortcutName = module.name
         shortcutIconUri = null
@@ -461,7 +463,10 @@ fun ModulePagerMiuix(
         defaultWebUiShortcutIconUri = module.webUiIconPath
             ?.takeIf { it.isNotBlank() }
             ?.let { "su:$it" }
-        if (module.hasActionScript && module.hasWebUi) {
+
+        if (type != null) {
+            openShortcutDialogForType(type)
+        } else if (module.hasActionScript && module.hasWebUi) {
             selectedShortcutType = null
             showShortcutTypeDialog.value = true
         } else if (module.hasActionScript) {
@@ -736,8 +741,8 @@ fun ModulePagerMiuix(
                             }
                         }
                         val onAddShortcutClick = remember(module.id) {
-                            {
-                                onModuleAddShortcut(currentModuleState.value)
+                            { type: ShortcutType ->
+                                onModuleAddShortcut(currentModuleState.value, type)
                             }
                         }
                         val onOpenWebUiClick = remember(module.id) {
@@ -834,8 +839,8 @@ fun ModulePagerMiuix(
                                 viewModel.markNeedRefresh()
                             }
                         },
-                        onModuleAddShortcut = { module ->
-                            onModuleAddShortcut(module)
+                        onModuleAddShortcut = { module, type ->
+                            onModuleAddShortcut(module, type)
                         },
                         context = context,
                         innerPadding = innerPadding,
@@ -1009,7 +1014,7 @@ private fun ModuleList(
     onModuleUndoUninstall: suspend (ModuleViewModel.ModuleInfo) -> Unit,
     onModuleToggle: suspend (ModuleViewModel.ModuleInfo) -> Unit,
     onModuleUpdate: suspend (ModuleViewModel.ModuleInfo, String, String, String) -> Unit,
-    onModuleAddShortcut: (ModuleViewModel.ModuleInfo) -> Unit,
+    onModuleAddShortcut: (ModuleViewModel.ModuleInfo, ShortcutType) -> Unit,
     context: Context,
     innerPadding: PaddingValues,
     bottomInnerPadding: Dp,
@@ -1132,8 +1137,8 @@ private fun ModuleList(
                             }
                         }
                         val onAddShortcutClick = remember(module.id) {
-                            {
-                                onModuleAddShortcut(currentModuleState.value)
+                            { type: ShortcutType ->
+                                onModuleAddShortcut(currentModuleState.value, type)
                             }
                         }
                         val onOpenWebUiClick = remember(module.id, onClickModule) {
@@ -1167,6 +1172,7 @@ private fun ModuleList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ModuleItem(
     module: ModuleViewModel.ModuleInfo,
@@ -1176,7 +1182,7 @@ fun ModuleItem(
     onCheckChanged: (Boolean) -> Unit,
     onUpdate: () -> Unit,
     onExecuteAction: () -> Unit,
-    onAddActionShortcut: () -> Unit,
+    onAddActionShortcut: (ShortcutType) -> Unit,
     onOpenWebUi: () -> Unit
 ) {
     val secondaryContainer = colorScheme.secondaryContainer.copy(alpha = 0.8f)
@@ -1320,11 +1326,16 @@ fun ModuleItem(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (module.hasActionScript) {
-                        IconButton(
-                            backgroundColor = secondaryContainer,
-                            minHeight = 35.dp,
-                            minWidth = 35.dp,
-                            onClick = onExecuteAction,
+                        Box(
+                            modifier = Modifier
+                                .size(35.dp)
+                                .clip(CircleShape)
+                                .background(secondaryContainer)
+                                .combinedClickable(
+                                    onClick = onExecuteAction,
+                                    onLongClick = { onAddActionShortcut(ShortcutType.Action) }
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 modifier = Modifier.size(20.dp),
@@ -1335,32 +1346,22 @@ fun ModuleItem(
                         }
                     }
                     if (module.hasWebUi) {
-                        IconButton(
-                            backgroundColor = secondaryContainer,
-                            minHeight = 35.dp,
-                            minWidth = 35.dp,
-                            onClick = onOpenWebUi,
+                        Box(
+                            modifier = Modifier
+                                .size(35.dp)
+                                .clip(CircleShape)
+                                .background(secondaryContainer)
+                                .combinedClickable(
+                                    onClick = onOpenWebUi,
+                                    onLongClick = { onAddActionShortcut(ShortcutType.WebUI) }
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 modifier = Modifier.size(20.dp),
                                 imageVector = Icons.Rounded.Code,
                                 tint = actionIconTint,
                                 contentDescription = stringResource(R.string.open)
-                            )
-                        }
-                    }
-                    if (module.hasActionScript || module.hasWebUi) {
-                        IconButton(
-                            backgroundColor = secondaryContainer,
-                            minHeight = 35.dp,
-                            minWidth = 35.dp,
-                            onClick = onAddActionShortcut,
-                        ) {
-                            Icon(
-                                modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Rounded.Add,
-                                tint = actionIconTint,
-                                contentDescription = stringResource(R.string.module_shortcut_add)
                             )
                         }
                     }
